@@ -23,17 +23,46 @@ const app = express();
 const PORT = 4000;
 const server = http.createServer(app);
 
-const allowedOrigins = [
+const baseAllowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'https://jewelry-website-frontend-h4pb.onrender.com',
     'https://jewelry-website-frontend.onrender.com',
 ];
 
+const extraOrigins = (process.env.CORS_ORIGINS || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const allowedOrigins = [...baseAllowedOrigins, ...extraOrigins];
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+/** Allow browser Origin header: production = allowlist only; dev = allowlist + any localhost / 127.0.0.1 port. */
+function isAllowedOrigin(origin) {
+    if (origin == null || origin === '') return true;
+    if (allowedOrigins.includes(origin)) return true;
+    if (!isProduction) {
+        try {
+            const { hostname } = new URL(origin);
+            if (hostname === 'localhost' || hostname === '127.0.0.1') return true;
+        } catch {
+            return false;
+        }
+    }
+    return false;
+}
+
+function corsOriginCallback(origin, callback) {
+    if (isAllowedOrigin(origin)) return callback(null, true);
+    callback(new Error('Not allowed by CORS'));
+}
+
 // WebSocket setup
 const io = new Server(server, {
     cors: {
-        origin: allowedOrigins,
+        origin: corsOriginCallback,
         methods: ['GET', 'POST'],
     },
 });
@@ -64,22 +93,15 @@ const uploadPhoto = multer({
     },
 });
 
-// Middleware
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
+// Middleware (see isAllowedOrigin: dev allows any port on localhost / 127.0.0.1)
+app.use(
+    cors({
+        origin: corsOriginCallback,
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization'],
+    })
+);
 app.use(express.json());
 app.use('/uploads', express.static(uploadPath));
 
