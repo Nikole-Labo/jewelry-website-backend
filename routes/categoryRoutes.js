@@ -1,24 +1,22 @@
-// src/routes/categoryRoutes.js
-// src/routes/categoryRoutes.js
 import express from 'express';
 import { authenticateToken, authorizeRoles } from '../middleware/authenticate.js';
+import { ROLE_ADMIN } from '../constants/roles.js';
 import {
-    getAllCategories,
-    getCategory,
-    createCategory,
-    updateCategory,
-    deleteCategory,
-    getTopCategoriesByAvgPrice
-} from '../controller/categoryController.js'; // Note the `.js` extension
+  getAllCategories,
+  getCategory,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  getTopCategoriesByAvgPrice,
+} from '../controller/categoryController.js';
 
 const router = express.Router();
 
 router.get('/stats/top-by-price', getTopCategoriesByAvgPrice);
-
 router.get('/', getAllCategories);
 router.get('/:id', getCategory);
-router.post('/', authenticateToken, authorizeRoles(1, 2), createCategory);
-router.patch('/:id', authenticateToken, authorizeRoles(1, 2), updateCategory);
-router.delete('/:id', authenticateToken, authorizeRoles(1, 2), deleteCategory);
+router.post('/', authenticateToken, authorizeRoles(ROLE_ADMIN), createCategory);
+router.patch('/:id', authenticateToken, authorizeRoles(ROLE_ADMIN), updateCategory);
+router.delete('/:id', authenticateToken, authorizeRoles(ROLE_ADMIN), deleteCategory);
 
 export default router;

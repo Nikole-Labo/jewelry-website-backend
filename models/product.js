@@ -16,7 +16,12 @@ class ProductModel {
         const pool = await poolPromise;
         const result = await pool.request()
             .input('id', sql.Int, id)
-            .query('SELECT * FROM Products WHERE id = @id');
+            .query(`
+      SELECT p.*, c.name AS category_name
+      FROM Products p
+      LEFT JOIN Categories c ON p.category_id = c.id
+      WHERE p.id = @id
+    `);
         return result.recordset[0];
     }
 
@@ -31,13 +36,14 @@ class ProductModel {
             .input('category_id', sql.Int, product.category_id)
             .input('user_added', sql.Bit, product.user_added)
             .input('video', sql.NVarChar, product.video || null)
+            .input('photo', sql.NVarChar, product.photo || null)
             .query(`
-        INSERT INTO Products (name, description, style, price, category_id, user_added, video)
+        INSERT INTO Products (name, description, style, price, category_id, user_added, video, photo)
         OUTPUT INSERTED.*
-        VALUES (@name, @description, @style, @price, @category_id, @user_added, @video)
+        VALUES (@name, @description, @style, @price, @category_id, @user_added, @video, @photo)
       `);
 
-        return result.recordset[0]; // return the newly created product
+        return result.recordset[0]; 
     }
 
     async update(id, { name, description, style, price, category_id }) {
@@ -72,6 +78,18 @@ class ProductModel {
             .query(`
             UPDATE Products 
             SET video = @video
+            WHERE id = @id
+        `);
+    }
+
+    async updatePhoto(id, photoFilename) {
+        const pool = await poolPromise;
+        await pool.request()
+            .input('id', sql.Int, id)
+            .input('photo', sql.NVarChar, photoFilename)
+            .query(`
+            UPDATE Products
+            SET photo = @photo
             WHERE id = @id
         `);
     }

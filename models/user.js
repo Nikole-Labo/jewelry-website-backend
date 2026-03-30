@@ -1,15 +1,24 @@
 import { poolPromise, sql } from '../services/dbConnection.js';
 
+function bracketedPasswordColumn() {
+    const raw = (process.env.USERS_PASSWORD_COLUMN || 'password').trim();
+    if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(raw)) {
+        return '[password]';
+    }
+    return `[${raw}]`;
+}
+
 class UserModel {
     async createUser(email, username, password, roleId) {
         const pool = await poolPromise;
+        const pwCol = bracketedPasswordColumn();
         const result = await pool.request()
             .input('email', sql.NVarChar, email)
             .input('username', sql.NVarChar, username)
             .input('password', sql.NVarChar, password)
             .input('roleId', sql.Int, roleId)
             .query(`
-                INSERT INTO Users (email,username, password, roleId)
+                INSERT INTO dbo.Users ([email], [username], ${pwCol}, [roleId])
                 OUTPUT INSERTED.*
                 VALUES (@email, @username, @password, @roleId)
             `);
